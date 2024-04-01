@@ -1,0 +1,3 @@
+r   fire    1   bomber.fire + 1
+r   bomb    1   bomber.bomb + 1
+r   speed   1   bomber.speed + 1
