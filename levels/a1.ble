@@ -4,9 +4,14 @@
 #player_start:[1,1]
 #entities:[]
 #dataset:
-,____.
-|  BB!
-| BBB!
-|BBBO!
-|BBOO!
-`----ˇ
+,______________.
+|  B B BB  BB B!
+| OBOBO   OBO  !
+|BBB  B  B  B  !
+| O O O O  O O !
+|BBBBBBBBBB  B !
+| O O O O  O   !
+|BBB  B  B  BO !
+| OBOBO   OBO  !
+|  B B BB  BB B!
+`--------------ˇ

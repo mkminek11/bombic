@@ -1,9 +1,11 @@
 import pyglet
 from lib import elements, event, level, player
+from lib.logs import *
 
-MenuType = "bombic.screentype.menu"
-InfoType = "bombic.screentype.info"
-GameType = "bombic.screentype.game"
+MenuType   = "bombic.screentype.menu"
+InfoType   = "bombic.screentype.info"
+GameType   = "bombic.screentype.game"
+EditorType = "bombic.screentype.ble"
 
 
 class Screen:
@@ -68,8 +70,9 @@ class MainMenu(MenuScreen):
 
         _links = [
             ("Příběh",    event.Event(redirect = StoryMenu)),
-            ("Dedmeč",    event.Event(redirect = WIPMenu)),
+            ("Dedmeč",    event.Event(redirect = DeadmatchMenu)),
             ("Mrchovník", event.Event(redirect = WIPMenu)),
+            ("Editor",    event.Event(redirect = LevelEditor)),
             ("Ukončit",   event.Event(action = event.EXIT)),
         ]
 
@@ -80,6 +83,25 @@ class MainMenu(MenuScreen):
 
 # Story mode menu
 class StoryMenu(MenuScreen):
+    def __init__(self, window:pyglet.window.Window):
+        super().__init__()
+        self.exit_event = event.Event(redirect = MainMenu)
+
+        # _switch_elements = [pyglet.sprite.Sprite(pyglet.image.load(f"img/sprites/b{x}.png").get_region(0, 71, 50, 70), batch=self.b) for x in range(4)]
+        _switch_elements = [pyglet.shapes.Circle(0, 0, 50, batch=self.b) for x in range(4)]
+
+        self.elements = self.dynamic = [
+            elements.Link("Zpět", event = event.Event(redirect = MainMenu), y = 300, batch = self.b),
+            _level   := elements.Input("Level: ", y = 400, maxsize = 6, nonumbers = True, uppercase = True, batch = self.b),
+            _players := elements.NumSwitch(window, "Počet hráčů", y = 500, nmin = 1, nmax = 4, output_y = 700, output = _switch_elements, batch = self.b),
+            elements.Link("Hrr na ně!", event.Event(redirect = StoryScreen, data = [_level, _players]), y = 600, batch = self.b),
+        ]
+
+        for l in self.elements: l.center_x(window)
+
+
+# Deadmatch menu
+class DeadmatchMenu(MenuScreen):
     def __init__(self, window:pyglet.window.Window):
         super().__init__()
         self.exit_event = event.Event(redirect = MainMenu)
@@ -141,12 +163,17 @@ class StoryScreen(InfoScreen):
 
 # The level screen
 class MainGame(Screen):
-    def __init__(self, window:pyglet.window.Window, data:list):
+    DEATH_COUNTDOWN = 1   # return 1 second after all players die
+
+    def __init__(self, window:pyglet.window.Window, data:dict):
         super().__init__()
 
+        self.data = data
         self.type = GameType
         self.players_count = data["players_count"]
         self._source = data["level_source"]
+        self.playing = True
+        self.returned = False
 
         self.exit_event = event.Event(redirect = StoryScreen, data = [data["level_code"], self.players_count])
 
@@ -171,17 +198,38 @@ class MainGame(Screen):
         key_code = pyglet.window.key._key_names[symbol]
         for p in self.players: p.release(key_code)
 
+    def tick(self):
+        """ Called 10 times per second from the `main.py` """
+        player.Bomb.tick()
+        player.Fire.tick()
+
+        if not self.playing and not self.returned:
+            self.returned = True
+            return self.exit_event
+
+
     def update(self, time:float):
-        for i in self.players:
-            # check if player is alive
-            if i.display:
-                i.update(time)
-            else:
-                self.players.remove(i)
-                i.sprite.delete()
-                del i
+        """ Called 20 times per second """
+        if self.playing:
+            for i in self.players:
+                # check if player is alive
+                if i.display:
+                    i.update(time)
+                else:
+                    self.players.remove(i)
+                    i.sprite.delete()
+                    del i
 
         # check if all players died
-        if not self.players:
+        if self.playing and not self.players:
             # end the game
-            print("You lost")
+            self.playing = False
+            info("You lost")
+
+
+# Level editor
+class LevelEditor(Screen):
+    def __init__(self, window:pyglet.window.Window):
+        super().__init__()
+        self.exit_event = event.Event(redirect = MainMenu)
+

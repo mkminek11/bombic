@@ -4,6 +4,12 @@ class Event:
         self.action   = action
         self.data     = data
 
-    def __str__(self): return f"<Event object: redirect {self.redirect}, action {self.action}, data {str(self.data)}"
+    def __str__(self):
+        s = "<Event:"
+        if self.redirect: s += f" redirect to {self.redirect.__name__}"
+        elif self.action: s += f" action {self.action}"
+        elif self.data: s += f" data {str(self.data)}"
+        else: s += " EMPTY"
+        return s + ">"
 
 EXIT = "exit"

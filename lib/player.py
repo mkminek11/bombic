@@ -1,6 +1,7 @@
 import pyglet, time
 from lib.window import w
 from lib.level  import BLOCK_SIZE, Level, Block
+from lib.logs import *
 
 class Player:
     _controls = [
@@ -32,10 +33,10 @@ class Player:
         self._step = 0
         self.moving = False
         self.x, self.y = start_x, start_y
-        self.speed = 3 # block per second
+        self.speed = 3 # blocks per second
         self.bombs = []
         self.sprite = pyglet.sprite.Sprite(self.spritesheets[self.direction][0], batch=batch)
-        self.upgrades = {"bombs":1, "fires":1, "shoes":0}
+        self.upgrades = {"bombs":1, "fires":2, "shoes":0}
         
         self.update_pos()
         self.update_z()
@@ -143,6 +144,7 @@ class Player:
         self.alive = False
         self._step = 0
         self.moving = False
+        self.current_animation_frame = 0
         self.direction = "death"
 
     def die(self): self.display = False
@@ -158,7 +160,7 @@ class Bomb:
     _blink_stage = 0
     spritesheet = pyglet.image.ImageGrid(pyglet.image.load("img/sprites/explosion.png").get_region(0, 248, 356, 50), 1, 7, column_padding = 1)
 
-    def __init__(self, x:int, y:int, reach:int, level:Level, batch:pyglet.graphics.Batch):
+    def __init__(self, x:int, y:int, reach:int, level:Level, batch:pyglet.graphics.Batch) -> None:
         self.level = level
         self.reach = reach
         self.x, self.y = round(x), round(y)
@@ -174,8 +176,10 @@ class Bomb:
             [self.find(self.x, self.y + _y * BLOCK_SIZE) for _y in range(-self.reach, self.reach + 1)]
         )
 
+        # self.impact.remove(None)
+
         self.fire_slots:set[Block] = set()
-        self.destroy_slots = set()
+        self.destroy_slots         = set()
         self.calc()
 
         self.sprite = pyglet.sprite.Sprite(self.spritesheet[0], self.x, w.height - 2 * BLOCK_SIZE - self.y, batch = batch,
@@ -185,7 +189,7 @@ class Bomb:
 
     def find(self, x:int, y:int) -> Block:
         """ Get block by position """
-        return self.level.get_collision(x + 1, y + 1, 1, 1)[0][0]
+        return x[0][0] if (x := self.level.get_collision(x + 1, y + 1, 1, 1)) else None
 
     def check(self, timestamp:float) -> bool:
         """ Check if this bomb should explode now """
@@ -205,23 +209,32 @@ class Bomb:
 
     def calc(self) -> None:
         """ Recalculate `fire_slots` and `destroy_slots` """
-        # impact on passable blocks (blinking)
-        self.fire_slots = set([b for b in self.impact if b.type.passable])
-        # impact on destructible blocks (destroying)
-        self.destroy_slots = set([b for b in self.impact if b.type.destructible])
+        _directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
-    @classmethod
-    def _find_explosion(cls, explosion:list|set) -> list:
+        # impact on passable blocks (blinking)
+        self.fire_slots    = set()
+        # impact on destructible blocks (destroying)
+        self.destroy_slots = set()
+
+        self.fire_slots.add(self.find(self.x, self.y))
+        for dx, dy in _directions:
+            for i in range(1, self.reach + 1):
+                block = self.find(self.x + i * dx * BLOCK_SIZE, self.y + i * dy * BLOCK_SIZE)
+                if block and block.type.passable:
+                    self.fire_slots.add(block)
+                else:
+                    if block and block.type.destructible: self.destroy_slots.add(block)
+                    break
+
+    @staticmethod
+    def _find_explosion(explosion:list|set) -> list:
         old:list[Bomb] = explosion
-        n = [e.find_impact() for e in old]
-        new = list(set([i for row in n for i in row]))  # convert 2d list to 1d
-        if old == new:
-            return new
-        else:
-            return cls._find_explosion(new)
+        new:list[Bomb] = list(set([x for e in old for x in e.find_impact()]))
+        if old == new: return new
+        else: return Bomb._find_explosion(new)
         
     @classmethod
-    def tick(cls):
+    def tick(cls) -> None:
         for b in cls.instances:
             for i in b.fire_slots:
                 i.blink(cls._blink_stage % 3)

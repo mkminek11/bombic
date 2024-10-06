@@ -4,6 +4,7 @@ from lib import screen
 from lib.event import *
 from lib.player import *
 from lib.window import w
+from lib.logs import *
 
 w.set_exclusive_mouse(True)
 
@@ -12,7 +13,7 @@ page = screen.MainMenu(w)
 
 
 def process(e:Event):
-    print(e)
+    debug(e)
     if e.redirect is not None:
         global page
         page = e.redirect(w) if e.data is None else e.redirect(w, e.data)
@@ -39,7 +40,7 @@ def on_key_press(symbol, modifiers):
         elif symbol == key.ESCAPE: process(page.exit())
     else:
         if symbol == key.ESCAPE: process(page.exit())
-        page.key(symbol, modifiers, w)
+        else: page.key(symbol, modifiers, w)
     
     return pyglet.event.EVENT_HANDLED
 
@@ -50,8 +51,10 @@ def on_key_release(symbol, modifiers):
 
 
 def tick(ms:int = None):
-    Bomb.tick()
-    Fire.tick()
+    if page.type == screen.GameType:
+        # if `page.tick()` returns an event, process it
+        # if e := page.tick(): pyglet.clock.schedule_once(lambda dt: process(e), 1)
+        page.tick()
 
 pyglet.clock.schedule_interval(tick, Bomb.TICK_INTERVAL)
 

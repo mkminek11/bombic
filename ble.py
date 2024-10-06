@@ -314,7 +314,7 @@ def select_delete(x, y, bx, by):
     sy = int((by-camera_y-camera_stable_y)//BLOCK_SIZE)
     tx = int((x -camera_x-camera_stable_x)//BLOCK_SIZE)
     ty = int((y -camera_y-camera_stable_y)//BLOCK_SIZE)
-    # print(tx, ty, sx, sy)
+
     for ax in range(min(tx, sx), max(tx, sx)+1):
         for ay in range(min(ty, sy), max(ty, sy)+1):
             occurrences = []
@@ -365,7 +365,6 @@ def on_resize(width, height):
 def on_mouse_scroll(x, y, dx, dy):
     if not touching(x, y, 0, 0, sb_bg.bg.x, sb_bg.bg.y, sb_bg.bg.width, sb_bg.bg.height):
         global camera_stable_x, camera_stable_y
-        # print("MOD_SHIFT" in pyglet.window.key.modifiers_string().split("|"))
         if 65505 in keys.keys() and keys[65505]:
             camera_stable_x -= 10*dy
         else:
@@ -395,7 +394,6 @@ def on_mouse_drag(x, y, dx, dy, buttons, modifiers):
 @w.event
 def on_mouse_press(x, y, buttons, modifiers):
     if not touching(x, y, 0, 0, sb_bg.bg.x, sb_bg.bg.y, sb_bg.bg.width, sb_bg.bg.height):
-        # print(modifiers)
         if modifiers == 18:   # if holding CTRL
             global drag_start_x, drag_start_y
             drag_start_x = x
